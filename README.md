@@ -7,7 +7,7 @@ work items, cycles, modules, releases, customers and more.
 Built on [FastMCP](https://github.com/jlowin/fastmcp) and the official
 [`plane-sdk`](https://pypi.org/project/plane-sdk/).
 
-- **31 tools**, one per Plane resource, covering 208 operations
+- **31 tools**, one per Plane resource, covering 203 operations
 - **Local or remote** — stdio, streamable HTTP, SSE
 - **OAuth or API key** authentication
 
@@ -126,15 +126,19 @@ Call `get_pql_reference` for the full syntax, operators and worked examples.
 ### Upgrading from the per-operation tools
 
 Earlier releases exposed one tool per API operation. **Existing integrations keep
-working**: 169 of those 177 names still resolve to the consolidated tool, so a
+working**: 164 of those 177 names still resolve to the consolidated tool, so a
 saved prompt or script calling `create_work_item` or `list_cycles` needs no
 change. They are no longer advertised, and they keep the parameter names they
 shipped with (`work_item_id`, not `workitem_id`).
 
 Seven names chose between two operations with a parameter
 (`manage_project_archive(archive=False)`), which one tool-and-action pair cannot
-reproduce; calling one tells you its replacement. `get_pql_reference` is
-unchanged.
+reproduce; they no longer resolve, and each replacement is recorded in its module's
+`LEGACY_UNMAPPED`. Five more, the relation
+definition tools and `remove_work_item_relation`, are gone because Plane Community
+Edition v1.4.2 does not serve them; `workitem_relation` uses the classic relations
+endpoint, which can list and create but not remove.
+`get_pql_reference` is unchanged.
 
 ## Configuration
 

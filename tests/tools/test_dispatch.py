@@ -515,3 +515,55 @@ def test_no_description_warns_about_a_failure_the_caller_cannot_avoid(resource_m
         if phrase in registered[mod.NAME].description.lower()
     ]
     assert not offenders, f"descriptions predicting a refusal instead of letting the API report it: {offenders}"
+
+
+def test_listing_relations_reads_the_classic_endpoint_and_returns_the_raw_response(registered, spy):
+    """`relations.list` validates into a model of id lists; Plane sends objects.
+
+    Pins both halves of the fix: the endpoint (Plane CE v1.4.2 answers 404 on the
+    newer ones) and that the response is not run through the SDK model.
+    """
+    raw = {"blocked_by": [{"project_id": "p", "issue_id": "w-2"}], "blocking": []}
+    spy.returns["work_items.relations._get"] = raw
+
+    result = registered["workitem_relation"].fn(action="list", project_id="p", workitem_id="w")
+
+    call = spy.recorder.only()
+    assert call.method == "work_items.relations._get"
+    assert call.kwargs["endpoint"].endswith("/projects/p/work-items/w/relations")
+    assert result is raw
+
+
+def test_listing_relations_reports_an_empty_or_non_json_response(registered, spy):
+    for body in (None, "<html>bad gateway</html>"):
+        spy.returns["work_items.relations._get"] = body
+        result = registered["workitem_relation"].fn(action="list", project_id="p", workitem_id="w")
+        assert isinstance(result, str) and result.startswith("Error:")
+
+
+def test_creating_a_relation_refuses_an_unknown_type_before_the_sdk(registered, spy):
+    result = registered["workitem_relation"].fn(
+        action="create", project_id="p", workitem_id="w", workitem_ids=["a"], relation_type="depends_on"
+    )
+    assert result.startswith("Error:") and "relation_type" in result
+    assert not spy.recorder.calls
+
+
+def test_creating_a_relation_sends_the_ids_as_issues(registered, spy):
+    registered["workitem_relation"].fn(
+        action="create", project_id="p", workitem_id="w", workitem_ids=["a", "b"], relation_type="blocked_by"
+    )
+    data = spy.recorder.only().kwargs["data"]
+    assert (data.relation_type, data.issues) == ("blocked_by", ["a", "b"])
+
+
+def test_creating_a_relation_reports_ids_that_plane_silently_skipped(registered, spy):
+    """Plane answers 201 with fewer relations than requested for an unknown id."""
+    fn = registered["workitem_relation"].fn
+    args = {"action": "create", "project_id": "p", "workitem_id": "w", "relation_type": "blocked_by"}
+
+    spy.returns["work_items.relations.create"] = []
+    assert fn(**args, workitem_ids=["gone"]).startswith("Error: Plane returned 0 of 1")
+
+    spy.returns["work_items.relations.create"] = [{"id": "r-1"}]
+    assert fn(**args, workitem_ids=["a"]) == [{"id": "r-1"}]

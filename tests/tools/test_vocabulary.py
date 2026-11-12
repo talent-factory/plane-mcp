@@ -53,7 +53,7 @@ def test_the_pql_reference_output_says_workitem(registered):
     [
         ("workitem", {"action": "retrieve"}),
         ("workitem_property", {"action": "get_value", "project_id": "p"}),
-        ("workitem_relation", {"action": "delete", "project_id": "p"}),
+        ("workitem_relation", {"action": "create", "project_id": "p", "workitem_id": "w"}),
     ],
 )
 def test_validation_errors_name_the_surface_parameter(tool_name, args, registered, spy):
@@ -96,10 +96,10 @@ def test_a_retired_name_accepts_the_retired_parameter_spelling(registered_with_a
 def test_the_aliases_keep_the_retired_spelling(aliases):
     """The other direction: a retired name is history and must not be modernised.
 
-    74 of the aliased names contain `work_item`. Renaming a key here would
+    69 of the aliased names contain `work_item`. Renaming a key here would
     silently drop the caller it exists to serve rather than resolve them.
     """
-    assert len(aliases) == 169
+    assert len(aliases) == 164
     retired_spelling = [name for name in aliases if "work_item" in name]
-    assert len(retired_spelling) == 74, f"expected 74 aliased work_item names, got {len(retired_spelling)}"
+    assert len(retired_spelling) == 69, f"expected 69 aliased work_item names, got {len(retired_spelling)}"
     assert not [name for name in aliases if "workitem" in name], "an alias key was renamed"

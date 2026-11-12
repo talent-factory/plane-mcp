@@ -1,6 +1,6 @@
 # The tool surface
 
-**31 tools**, one per Plane resource, each taking an `action` parameter that selects the operation. 208 actions in total.
+**31 tools**, one per Plane resource, each taking an `action` parameter that selects the operation. 203 actions in total.
 
 ```python
 workitem(action="create", project_id=..., name="Fix login")
@@ -73,9 +73,9 @@ Both implement `list_tools`/`get_tool` only, so execution keeps the full schema 
 
 ## Retired tool names
 
-Before consolidation this server exposed 177 tools, one per API operation. **169 still resolve**, unadvertised — so they cost nothing in the listing, but a saved prompt calling `create_work_item` keeps working, including the parameter names it shipped with (`work_item_id`, not `workitem_id`). Every resolution is logged, so the remaining callers are an observation rather than a guess.
+Before consolidation this server exposed 177 tools, one per API operation. **164 still resolve**, unadvertised — so they cost nothing in the listing, but a saved prompt calling `create_work_item` keeps working, including the parameter names it shipped with (`work_item_id`, not `workitem_id`). Every resolution is logged, so the remaining callers are an observation rather than a guess.
 
-**7 cannot be mapped.** An alias renames a tool; it cannot reshape one, and these chose between two operations with a parameter (`manage_project_archive(archive=False)`). Each is declared in its module's `LEGACY_UNMAPPED` with the replacement to use.
+**12 cannot be mapped.** Seven chose between two operations with a parameter (`manage_project_archive(archive=False)`); an alias renames a tool but cannot reshape one. The other five are relation tools Plane Community Edition v1.4.2 cannot serve: the four definition tools, which have no endpoint, and `remove_work_item_relation`, which its public API does not offer. Each is declared in its module's `LEGACY_UNMAPPED` with the reason or the replacement to use. That table is a record for maintainers and the tests; it is not shown to a caller, who gets the generic unknown-tool error.
 
 `tests/tools/_retired_names.py` is the frozen record of all 177; the conformance suite asserts every one is aliased, declared unmappable, or still registered.
 
@@ -119,7 +119,7 @@ Where the workspace owns a resource outright, both directions of wrong-scope wri
 | `workitem_comment` | `list` · `retrieve` · `create` · `update` · `delete` |
 | `workitem_link` | `list` · `retrieve` · `create` · `update` · `delete` |
 | `workitem_property` | `list` · `retrieve` · `create` · `update` · `delete` · `manage_type_properties` · `list_options` · `retrieve_option` · `create_option` · `update_option` · `delete_option` · `get_value` · `set_value` · `delete_value` |
-| `workitem_relation` | `list` · `create` · `delete` · `list_definitions` · `create_definition` · `update_definition` · `delete_definition` |
+| `workitem_relation` | `list` · `create` |
 | `workitem_type` | `list` · `retrieve` · `resolve` · `create` · `update` · `delete` · `import_to_project` |
 | `workspace` | `retrieve` · `get_features` · `update_features` |
 
