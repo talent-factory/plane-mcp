@@ -133,7 +133,8 @@ shipped with (`work_item_id`, not `workitem_id`).
 
 Seven names chose between two operations with a parameter
 (`manage_project_archive(archive=False)`), which one tool-and-action pair cannot
-reproduce; calling one tells you its replacement. Five more, the relation
+reproduce; they no longer resolve, and each replacement is recorded in its module's
+`LEGACY_UNMAPPED`. Five more, the relation
 definition tools and `remove_work_item_relation`, are gone because Plane Community
 Edition v1.4.2 does not serve them; `workitem_relation` uses the classic relations
 endpoint, which can list and create but not remove.

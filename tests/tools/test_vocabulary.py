@@ -53,7 +53,7 @@ def test_the_pql_reference_output_says_workitem(registered):
     [
         ("workitem", {"action": "retrieve"}),
         ("workitem_property", {"action": "get_value", "project_id": "p"}),
-        ("workitem_relation", {"action": "delete", "project_id": "p"}),
+        ("workitem_relation", {"action": "create", "project_id": "p", "workitem_id": "w"}),
     ],
 )
 def test_validation_errors_name_the_surface_parameter(tool_name, args, registered, spy):

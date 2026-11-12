@@ -19,8 +19,8 @@ from plane_mcp.toolkit.spec import action_names
 LISTING_BUDGET_CHARS = 70_000
 MAX_ADVERTISED_TOOLS = 35  # strictest published client cap is 40 -- leave headroom
 NAME_BUDGET = 46  # 64-char provider limit, less room for a client prefix
-# Retired tools that cannot be aliased: 7 chose by parameter, 5 are relation
-# tools that Plane CE v1.4.2 does not serve (4 definitions, 1 removal).
+# Retired tools that cannot be aliased: 7 chose by parameter; 5 are relation tools
+# that Plane CE v1.4.2 does not serve (see workitem_relation.LEGACY_UNMAPPED).
 UNMAPPED_BUDGET = 12
 
 # "resolve" is deliberately absent: workitem_type.resolve creates the type when
@@ -256,9 +256,10 @@ def test_unmapped_declarations_name_real_retired_tools(unmapped, retired_tool_na
 def test_unmapped_stays_small(unmapped):
     """Every entry is a break for someone. Ratchet, not a dumping ground.
 
-    All current entries are one shape: a retired tool that chose between two
-    operations with a boolean or a Literal parameter. Neither survives a rename,
-    because the alias fixes `action` to a single value.
+    Two shapes: a retired tool that chose between two operations with a boolean
+    or a Literal parameter (neither survives a rename, because the alias fixes
+    `action` to a single value), and a tool for an endpoint the targeted Plane
+    version does not serve (see `workitem_relation.LEGACY_UNMAPPED`).
     """
     assert len(unmapped) <= UNMAPPED_BUDGET, f"{len(unmapped)} legacy tools dropped: {sorted(unmapped)}"
 
