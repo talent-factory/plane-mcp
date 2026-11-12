@@ -73,9 +73,9 @@ Both implement `list_tools`/`get_tool` only, so execution keeps the full schema 
 
 ## Retired tool names
 
-Before consolidation this server exposed 177 tools, one per API operation. **169 still resolve**, unadvertised — so they cost nothing in the listing, but a saved prompt calling `create_work_item` keeps working, including the parameter names it shipped with (`work_item_id`, not `workitem_id`). Every resolution is logged, so the remaining callers are an observation rather than a guess.
+Before consolidation this server exposed 177 tools, one per API operation. **164 still resolve**, unadvertised — so they cost nothing in the listing, but a saved prompt calling `create_work_item` keeps working, including the parameter names it shipped with (`work_item_id`, not `workitem_id`). Every resolution is logged, so the remaining callers are an observation rather than a guess.
 
-**7 cannot be mapped.** An alias renames a tool; it cannot reshape one, and these chose between two operations with a parameter (`manage_project_archive(archive=False)`). Each is declared in its module's `LEGACY_UNMAPPED` with the replacement to use.
+**12 cannot be mapped.** An alias renames a tool; it cannot reshape one, and these chose between two operations with a parameter (`manage_project_archive(archive=False)`). Each is declared in its module's `LEGACY_UNMAPPED` with the replacement to use. Seven are of that shape; the other five are the relation tools Plane Community Edition v1.4.2 cannot serve: the four definition tools, which have no endpoint, and `remove_work_item_relation`, which its public API does not offer.
 
 `tests/tools/_retired_names.py` is the frozen record of all 177; the conformance suite asserts every one is aliased, declared unmappable, or still registered.
 
@@ -119,7 +119,7 @@ Where the workspace owns a resource outright, both directions of wrong-scope wri
 | `workitem_comment` | `list` · `retrieve` · `create` · `update` · `delete` |
 | `workitem_link` | `list` · `retrieve` · `create` · `update` · `delete` |
 | `workitem_property` | `list` · `retrieve` · `create` · `update` · `delete` · `manage_type_properties` · `list_options` · `retrieve_option` · `create_option` · `update_option` · `delete_option` · `get_value` · `set_value` · `delete_value` |
-| `workitem_relation` | `list` · `create` · `delete` · `list_definitions` · `create_definition` · `update_definition` · `delete_definition` |
+| `workitem_relation` | `list` · `create` |
 | `workitem_type` | `list` · `retrieve` · `resolve` · `create` · `update` · `delete` · `import_to_project` |
 | `workspace` | `retrieve` · `get_features` · `update_features` |
 

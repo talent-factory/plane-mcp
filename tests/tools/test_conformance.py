@@ -19,7 +19,9 @@ from plane_mcp.toolkit.spec import action_names
 LISTING_BUDGET_CHARS = 70_000
 MAX_ADVERTISED_TOOLS = 35  # strictest published client cap is 40 -- leave headroom
 NAME_BUDGET = 46  # 64-char provider limit, less room for a client prefix
-UNMAPPED_BUDGET = 7  # retired tools that cannot be aliased; see the test for the shape
+# Retired tools that cannot be aliased: 7 chose by parameter, 5 are relation
+# tools that Plane CE v1.4.2 does not serve (4 definitions, 1 removal).
+UNMAPPED_BUDGET = 12
 
 # "resolve" is deliberately absent: workitem_type.resolve creates the type when
 # it does not exist, so the name reads like a lookup but the action is not one.
