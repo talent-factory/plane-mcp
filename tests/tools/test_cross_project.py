@@ -309,3 +309,17 @@ def test_no_filter_keeps_the_old_workspace_listing(registered, spy):
     run(registered, action="list")
 
     assert spy.recorder.only().method == "work_items.list_workspace"
+
+
+def test_an_uppercase_uuid_still_matches(world, registered):
+    result = run(registered, action="list", project_id="p2", assignee=ME.upper())
+
+    assert ids(result) == ["P2-1"]
+
+
+def test_a_foreign_item_without_a_state_is_not_unclassified(world, registered):
+    world.items["p1"] = [_item(1, "started", (OTHER,), expanded=False)]
+
+    result = run(registered, action="list", project_id="p1", assignee="me", state_group="started")
+
+    assert result["unclassified"] == 0

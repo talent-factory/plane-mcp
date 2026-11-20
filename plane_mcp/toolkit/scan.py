@@ -34,8 +34,8 @@ PAGE = 100
 MAX_REQUESTS = 50
 MAX_MATCHES = 500
 
-# What a hit carries when the caller names no `fields`; enough to read a result
-# list without a second call per item.
+# What a hit always carries: the filters need `state` and `assignees`, and the rest is
+# enough to read a result list without a second call per item. A caller's `fields` come on top.
 LEAN_FIELDS = ("id", "sequence_id", "name", "state", "priority", "project", "assignees")
 
 
@@ -168,18 +168,19 @@ def scan_work_items(
                     )
                     current = identifier
                     for item in page.results:
+                        if assignee_id and assignee_id not in ids_of(getattr(item, "assignees", None)):
+                            continue
                         if state_groups and _group(item) is None:
                             scan.unclassified += 1
-                        elif assignee_id and assignee_id not in ids_of(getattr(item, "assignees", None)):
-                            continue
                         elif not state_groups or _group(item) in state_groups:
                             if capped and len(scan.results) >= MAX_MATCHES:
                                 scan.truncated = f"stopped at {MAX_MATCHES} matches; add a filter or pass project_id"
                                 scan.partial_projects.append(identifier)
                                 scan.unscanned_projects = [i for _, i in projects[index + 1 :]]
                                 return _finish(scan)
-                            row = dump_results([item], wanted)[0]
-                            scan.results.append({"identifier": f"{identifier}-{item.sequence_id}", **row})
+                            if capped:
+                                row = dump_results([item], wanted)[0]
+                                scan.results.append({"identifier": f"{identifier}-{item.sequence_id}", **row})
                             scan.by_project[identifier] += 1
                     cursor = _next(page, f"work items of {identifier}")
                     if cursor is None:
@@ -207,7 +208,7 @@ def scan_work_items(
 
 def _finish(scan: Scan) -> Scan | str:
     if scan.skipped_projects and not scan.scanned_projects and not scan.partial_projects:
-        return f"Error: no access to {', '.join(scan.skipped_projects)}; nothing could be read."
+        return f"Error: no access to {', '.join(scan.skipped_projects)} (403 or 404); nothing could be read."
     if scan.truncated or scan.skipped_projects or scan.unclassified:
         logger.warning(
             "cross-project scan incomplete: truncated=%r skipped=%s unclassified=%d requests=%d",

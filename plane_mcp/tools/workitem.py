@@ -41,10 +41,11 @@ from plane_mcp.toolkit import (
     one_of,
     opt,
     pql_failure,
+    resolve_me,
     rich_text,
     scan_work_items,
+    valid_assignee,
 )
-from plane_mcp.toolkit.scan import resolve_me, valid_assignee
 
 logger = get_logger(__name__)
 
@@ -292,7 +293,7 @@ def register(mcp: FastMCP) -> None:
                 external_source=external_source,
             ):
                 return cross_project_error
-            assignee_id = resolve_me(client) if assignee == "me" else opt(assignee)
+            assignee_id = resolve_me(client) if assignee == "me" else opt(assignee.lower())
             if assignee == "me" and not assignee_id:
                 return "Error: Plane did not say who 'me' is; pass the user UUID as assignee."
             scan = scan_work_items(
