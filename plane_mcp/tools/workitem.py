@@ -44,7 +44,7 @@ from plane_mcp.toolkit import (
     rich_text,
     scan_work_items,
 )
-from plane_mcp.toolkit.scan import MAX_MATCHES, resolve_me
+from plane_mcp.toolkit.scan import resolve_me, valid_assignee
 
 logger = get_logger(__name__)
 
@@ -158,11 +158,12 @@ FOOTER = (
     f"count group_by and sub_group_by accept: {', '.join(GROUP_BY_VALUES)}. These are grouping "
     "keys only -- they are not PQL filter fields, and filtering on state__group is rejected.\n"
     "assignee ('me' or a user UUID) and state_group (one or several of "
-    f"{', '.join(STATE_GROUPS)}) filter work items across every readable project: list returns "
-    "{results, total_count}, count returns {count, by_project}, both with projects_scanned, "
-    "skipped_projects (no access) and truncated (a limit stopped the walk; the answer is partial). "
-    "They need no PQL and no workspace endpoint, which the Community Edition lacks, and take no "
-    "cursor, per_page, order_by or group_by."
+    f"{', '.join(STATE_GROUPS)}) filter work items across every readable project, on list and count "
+    "only. list returns {results, returned}, count returns {count, by_project}. Trust `complete`: "
+    "when false, count is renamed count_at_least and the answer is partial -- see skipped_projects "
+    "(no access), partial_projects, unscanned_projects, unclassified and truncated. They need no PQL "
+    "and no workspace endpoint, which the Community Edition lacks, and take no cursor, per_page, "
+    "order_by, group_by or expand."
 )
 
 LEGACY = {
@@ -272,6 +273,11 @@ def register(mcp: FastMCP) -> None:
             if error := one_of("state_group", group, STATE_GROUPS):
                 return error
 
+        if (assignee or groups) and action not in ("list", "count"):
+            return f"Error: assignee and state_group filter list and count only, not {action}."
+        if assignee and not valid_assignee(assignee):
+            return "Error: assignee must be 'me' or a user UUID (member list gives the id)."
+
         if action in ("list", "count") and (assignee or groups):
             if cross_project_error := _cross_project_conflict(
                 action,
@@ -296,7 +302,7 @@ def register(mcp: FastMCP) -> None:
                 assignee_id=assignee_id,
                 state_groups=groups,
                 fields=fields,
-                max_matches=None if action == "count" else MAX_MATCHES,
+                capped=action == "list",
             )
             if isinstance(scan, str):
                 return scan
