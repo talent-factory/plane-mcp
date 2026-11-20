@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, get_args
 from fastmcp import FastMCP
 from fastmcp.utilities.logging import get_logger
 from plane.errors.errors import HttpError
-from plane.models.enums import PriorityEnum
+from plane.models.enums import GroupEnum, PriorityEnum
 from plane.models.query_params import (
     RetrieveQueryParams,
     WorkItemCountQueryParams,
@@ -41,7 +41,10 @@ from plane_mcp.toolkit import (
     one_of,
     opt,
     pql_failure,
+    resolve_me,
     rich_text,
+    scan_work_items,
+    valid_assignee,
 )
 
 logger = get_logger(__name__)
@@ -50,6 +53,7 @@ NAME = "workitem"
 TITLE = "Work items"
 
 PRIORITIES = get_args(PriorityEnum)
+STATE_GROUPS = get_args(GroupEnum)
 
 WRITE_FIELDS = (
     "name",
@@ -75,8 +79,8 @@ QUERY_FIELDS = ("order_by", "per_page", "cursor", "expand", "fields", "external_
 ACTIONS = (
     Action(
         "list",
-        optional=("project_id", "pql", *QUERY_FIELDS),
-        note="omit project_id to search the whole workspace",
+        optional=("project_id", "pql", "assignee", "state_group", *QUERY_FIELDS),
+        note="omit project_id to search the whole workspace; assignee/state_group filter across projects (see below)",
         read=True,
     ),
     Action("list_archived", ("project_id",), ("pql", *QUERY_FIELDS), read=True),
@@ -96,8 +100,9 @@ ACTIONS = (
     Action("search", ("query",), ("expand", "fields", "external_id", "external_source", "order_by"), read=True),
     Action(
         "count",
-        optional=("project_id", "pql", "group_by", "sub_group_by"),
-        note="counts the whole workspace unless project_id narrows it",
+        optional=("project_id", "pql", "group_by", "sub_group_by", "assignee", "state_group"),
+        note="counts the whole workspace unless project_id narrows it; assignee/state_group count across "
+        "projects (see below)",
         read=True,
     ),
     Action("create", ("project_id", "name"), WRITE_FIELDS[1:]),
@@ -152,7 +157,14 @@ FOOTER = (
     "fields is a sparse fieldset: use `project`, not project_id, and `description_html`, not "
     "description.\n"
     f"count group_by and sub_group_by accept: {', '.join(GROUP_BY_VALUES)}. These are grouping "
-    "keys only -- they are not PQL filter fields, and filtering on state__group is rejected."
+    "keys only -- they are not PQL filter fields, and filtering on state__group is rejected.\n"
+    "assignee ('me' or a user UUID) and state_group (one or several of "
+    f"{', '.join(STATE_GROUPS)}) filter work items across every readable project, on list and count "
+    "only. list returns {results, returned}, count returns {count, by_project}. Trust `complete`: "
+    "when false, count is renamed count_at_least and the answer is partial -- see skipped_projects "
+    "(no access), partial_projects, unscanned_projects, unclassified and truncated. They need no PQL "
+    "and no workspace endpoint, which the Community Edition lacks, and take no cursor, per_page, "
+    "order_by, group_by or expand."
 )
 
 LEGACY = {
@@ -177,6 +189,17 @@ def _scoped_pql(pql: str, project_id: str) -> str:
         return pql
     scope = f'project = "{project_id}"'
     return f"({pql}) AND {scope}" if pql else scope
+
+
+def _cross_project_conflict(action: str, pql: str, **ignored: Any) -> str | None:
+    """The arguments the cross-project walk cannot honour, named instead of dropped."""
+    unsupported = [name for name, value in {"pql": pql, **ignored}.items() if value]
+    if not unsupported:
+        return None
+    return (
+        f"Error: {action} with assignee or state_group filters here, so it cannot also take "
+        f"{', '.join(unsupported)}. Drop {'it' if len(unsupported) == 1 else 'them'}, or drop the filter."
+    )
 
 
 def register(mcp: FastMCP) -> None:
@@ -207,6 +230,8 @@ def register(mcp: FastMCP) -> None:
         pql: Annotated[str, Field(description=PQL_FIELD_HINT)] = "",
         group_by: str = "",
         sub_group_by: str = "",
+        assignee: str = "",
+        state_group: list[str] | str | None = None,
         name: str = "",
         assignees: list[str] | None = None,
         labels: list[str] | None = None,
@@ -244,6 +269,45 @@ def register(mcp: FastMCP) -> None:
             return error
         if error := one_of("sub_group_by", sub_group_by, GROUP_BY_VALUES):
             return error
+        groups = coerce_list(state_group)
+        for group in groups or []:
+            if error := one_of("state_group", group, STATE_GROUPS):
+                return error
+
+        if (assignee or groups) and action not in ("list", "count"):
+            return f"Error: assignee and state_group filter list and count only, not {action}."
+        if assignee and not valid_assignee(assignee):
+            return "Error: assignee must be 'me' or a user UUID (member list gives the id)."
+
+        if action in ("list", "count") and (assignee or groups):
+            if cross_project_error := _cross_project_conflict(
+                action,
+                pql,
+                cursor=cursor,
+                per_page=per_page,
+                order_by=order_by,
+                group_by=group_by,
+                sub_group_by=sub_group_by,
+                expand=expand,
+                external_id=external_id,
+                external_source=external_source,
+            ):
+                return cross_project_error
+            assignee_id = resolve_me(client) if assignee == "me" else opt(assignee.lower())
+            if assignee == "me" and not assignee_id:
+                return "Error: Plane did not say who 'me' is; pass the user UUID as assignee."
+            scan = scan_work_items(
+                client,
+                workspace_slug,
+                project_id=project_id,
+                assignee_id=assignee_id,
+                state_groups=groups,
+                fields=fields,
+                capped=action == "list",
+            )
+            if isinstance(scan, str):
+                return scan
+            return scan.counts() if action == "count" else scan.listing()
 
         def retrieve_params() -> RetrieveQueryParams:
             return RetrieveQueryParams(

@@ -55,6 +55,7 @@ from plane_mcp.toolkit.runtime import (
     require,
     rich_text,
 )
+from plane_mcp.toolkit.scan import resolve_me, scan_work_items, valid_assignee
 from plane_mcp.toolkit.spec import (
     Action,
     action_names,
@@ -91,9 +92,12 @@ __all__ = [
     "pql_failure",
     "render_mentions",
     "require",
+    "resolve_me",
+    "scan_work_items",
     "scoped",
     "tokenize_mentions",
     "unmentionable",
+    "valid_assignee",
     "workspace_owns",
     "workspace_owns_resource",
     "workitem_page",
